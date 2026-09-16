@@ -1,0 +1,62 @@
+{
+  "name": "LangChain Intro RAG - 1 journée",
+  // --- Source du container : on s'appuie sur docker-compose ---
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "langchain-app",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root",
+  // --- Configuration VS Code ---
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Python tooling
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        // Jupyter Notebooks
+        "ms-toolsai.jupyter",
+        "ms-toolsai.jupyter-renderers",
+        "ms-toolsai.jupyter-keymap",
+        // Linter / formateur ultra-rapide (remplace black + isort + flake8)
+        "charliermarsh.ruff",
+        // YAML support (pour docker-compose, config)
+        "redhat.vscode-yaml",
+        // Vérificateur orthographique (utile pour les Markdown de formation)
+        "streetsidesoftware.code-spell-checker"
+      ],
+      "settings": {
+        // Forcer Python du container (evite les fausses suggestions d'env locaux)
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.terminal.activateEnvironment": false,
+        // Notebook par defaut a la racine du workspace
+        "jupyter.notebookFileRoot": "${workspaceFolder}",
+        // Format on save avec Ruff
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        }
+      }
+    }
+  },
+  // --- Ports auto-forwardes vers l'hote ---
+  // Correction vs FormateurWorkspace : 8888 (JupyterLab) manquait, et le
+  // port 8000 forwarde ne correspondait a aucun service reel (Chroma tourne
+  // en mode embarque, pas en serveur separe). Voir CHANGEMENTS_PROPOSES.md.
+  "forwardPorts": [
+    8888,
+    11434
+  ],
+  "portsAttributes": {
+    "8888": {
+      "label": "JupyterLab",
+      "onAutoForward": "openBrowser"
+    },
+    "11434": {
+      "label": "Ollama API",
+      "onAutoForward": "silent"
+    }
+  },
+  // --- Variables d'environnement transmises a VS Code et au shell ---
+  "remoteEnv": {
+    "OLLAMA_BASE_URL": "http://host.docker.internal:11434"
+  }
+}

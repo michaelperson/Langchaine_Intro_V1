@@ -1,0 +1,113 @@
+# ================================================================
+# DOCKER COMPOSE — Langchaine_Intro_V1 (Journée d'introduction au RAG)
+# ----------------------------------------------------------------
+# Stack : Ollama (LLM) + ChromaDB embarqué + JupyterLab
+# Modèle : gemma3:4b (Google, ~3,3 Go, multilingue, optimisé local)
+#
+# Version allégée de la stack complète FormateurWorkspace : un seul
+# modèle Ollama (pas d'agents/LangGraph), pas de Streamlit, pas de
+# Langfuse — voir CHANGEMENTS_PROPOSES.md pour le détail.
+# ================================================================
+
+services:
+  # ================================================================
+  # SERVICE 1 : Ollama — Serveur LLM local
+  # ================================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: formation-ollama
+    ports:
+      - "11434:11434"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - OLLAMA_BASE_URL=0.0.0.0
+    volumes:
+      - ollama_data:/root/.ollama # Persistance du modèle téléchargé
+    # Healthcheck : Docker attend que l'API Ollama réponde avant de démarrer
+    # les services dépendants. Évite les erreurs de connexion au démarrage.
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # ================================================================
+  # SERVICE 2 : ollama-init — Pull automatique de gemma3:4b
+  # Joue le rôle d'"init container" :
+  #   - attend qu'Ollama soit healthy
+  #   - télécharge gemma3:4b une seule fois (~3,3 Go)
+  #   - stocke le modèle dans le volume ollama_data (réutilisable)
+  #   - s'arrête proprement (restart: no)
+  # Seul modèle nécessaire pour l'introduction RAG (pas d'agents/tool-calling
+  # dans ce kit — voir CHANGEMENTS_PROPOSES.md).
+  # ================================================================
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: formation-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["sh", "-c", "ollama pull gemma3:4b"]
+    restart: "no"
+
+  # ================================================================
+  # SERVICE 3 : langchain-app — JupyterLab + LangChain (pas de Streamlit)
+  # ================================================================
+  langchain-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: formation-langchain-app
+    ports:
+      - "8888:8888" # JupyterLab
+    volumes:
+      # Les notebooks du jour J seront déposés ici le matin de la formation.
+      - ./workspace:/workspace
+      # Cache HuggingFace persistant : les embeddings (~90 Mo) ne se
+      # re-téléchargent pas à chaque rebuild.
+      - hf_cache:/root/.cache/huggingface
+      # Persistance ChromaDB : l'index vectoriel survit aux redémarrages
+      - chroma_data:/workspace/data/chroma_db
+    environment:
+      # URL interne Docker — utilisée dans tous les notebooks de la formation
+      - OLLAMA_HOST=http://ollama:11434
+      # Désactive la télémétrie ChromaDB (privacy 100% local)
+      - ANONYMIZED_TELEMETRY=False
+      # Empêche transformers d'aller chercher des modèles en ligne après le 1er DL
+      - HF_HUB_OFFLINE=0
+      # Modèle utilisé dans tous les notebooks du jour (RAG, prompting)
+      - OLLAMA_MODEL=gemma3:4b
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      ollama-init:
+        condition: service_completed_successfully
+    # ============================================================
+    # Healthcheck : Jupyter Lab expose une API REST sur /api
+    # qui répond 200 + JSON quand le serveur est prêt.
+    # ============================================================
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8888/api > /dev/null || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+# ================================================================
+# VOLUMES persistants (survivent aux `docker compose down`)
+# Pour tout effacer : `docker compose down -v`
+# ================================================================
+volumes:
+  ollama_data: # Modèle Ollama (gemma3:4b ~3,3 Go)
+  hf_cache: # Embeddings HuggingFace (~90 Mo)
+  chroma_data: # Index vectoriel ChromaDB

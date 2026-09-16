@@ -1,0 +1,63 @@
+# ===================================================================
+# Langchaine_Intro_V1 - requirements.txt
+# Stack: LangChain 1.x + Ollama + HuggingFace + ChromaDB (RAG local, jour unique)
+# ===================================================================
+# Version allegee de FormateurWorkspace/infrastructure/requirements.txt,
+# limitee a ce qui est necessaire pour une introduction RAG en une journee
+# (LCEL, prompts/parsers, embeddings, RAG local, ingestion PDF/Markdown).
+#
+# Retires par rapport au kit complet (voir CHANGEMENTS_PROPOSES.md) :
+# langgraph* (agents), langfuse (monitoring), streamlit (UI) - Jour 2/3 uniquement.
+#
+# Ranges semantiques verifiees contre PyPI en septembre 2026 (versions
+# stables les plus recentes au moment de la redaction) :
+#   langchain 1.4.0 · langgraph 1.2.11 (non utilise ici) ·
+#   langchain-huggingface 1.2.2 · langchain-chroma 1.1.0 · chromadb 1.5.9
+# ===================================================================
+
+
+# --- LangChain Core (meta-package + briques fondamentales) ---
+langchain>=1.0.0,<2.0.0
+langchain-core>=1.3.0,<2.0.0
+langchain-community>=0.4.0,<1.0.0
+langchain-text-splitters>=1.1.0,<2.0.0
+
+
+# --- Integrations LLM / Embeddings / VectorStore (LOCALES uniquement) ---
+# Aucune dependance OpenAI / Anthropic / Google : stack 100% locale
+langchain-ollama>=0.3.0,<1.0.0
+langchain-huggingface>=1.2.0,<2.0.0
+langchain-chroma>=1.1.0,<2.0.0
+
+
+# --- Base vectorielle & moteur d'embeddings ---
+chromadb>=1.3.5,<2.0.0
+sentence-transformers>=3.0.0,<5.0.0
+
+
+# --- Loaders de documents (Module 5 : ingestion PDF/Markdown) ---
+# pypdf : PDF natifs (textes selectionnables)
+# unstructured : fallback robuste pour PDFs scannes + Markdown
+pypdf>=4.0.0,<6.0.0
+unstructured[md]>=0.15.0,<1.0.0
+markdown>=3.6,<4.0
+
+
+# --- Validation & sortie structuree ---
+# Pydantic v2 OBLIGATOIRE en LangChain 1.x
+pydantic>=2.7.0,<3.0.0
+
+
+# --- Notebook Jupyter ---
+jupyter>=1.0.0
+ipykernel>=6.29.0
+ipywidgets>=8.1.0
+
+
+# --- Utilitaires ---
+python-dotenv>=1.0.0,<2.0.0
+httpx>=0.27.0
+
+
+# --- Outils de qualite de code (optionnels mais recommandes) ---
+ruff>=0.6.0
